@@ -5,18 +5,19 @@
 
 @font-face {
   font-family: "Geist Mono";
-  src: url("./assets/fonts/GeistMono-Variable.ttf") format("truetype");
+  src: url("/assets/fonts/GeistMono-Variable.ttf") format("truetype");
+  font-display: swap;
 }
 
 @font-face {
   font-family: "Audiowide";
-  src: url("./assets/fonts/Audiowide-Regular.ttf") format("truetype");
+  src: url("/assets/fonts/Audiowide-Regular.ttf") format("truetype");
+  font-display: swap;
 }
 
 @theme inline {
-  --font-geist-mono: "Geist Mono";
-  --font-audiowide: "Audiowide";
-  --font-geist-mono: "Geist Mono";
+  --font-geist-mono: "Geist Mono", monospace;
+  --font-audiowide: "Audiowide", sans-serif;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
