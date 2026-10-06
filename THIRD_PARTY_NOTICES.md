@@ -1,29 +1,9 @@
 # Third-Party Notices
 
-## Luminous Lake
-Source: https://github.com/stas4000/luminous-lake
+## DeCarlo Boyz / Steel City
+Source: https://github.com/scalabled/decarlo-boyz
+License: MIT
 
-MIT License
+Obsidian Atlas uses the open-world rendering, city, material, sky, physics, player, traffic, pedestrian, vehicle and FX systems from the pinned MIT-licensed DeCarlo Boyz source. The Atlas interface, cultural-state controls and product identity are separate adaptations.
 
-Copyright (c) 2026 Bles Software
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE.
-
-## Dark Strands
-Source: https://github.com/VictorZakharov/dark-strands
-
-Architecture and environmental-system research reference. MIT licensed upstream.
+Upstream engine portions in DeCarlo Boyz also retain their own MIT attribution in that project.
