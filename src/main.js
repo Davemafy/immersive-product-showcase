@@ -43,9 +43,4 @@ const els = {
   state: document.getElementById('state'),
   step: document.getElementById('step'),
   progress: document.getElementById('progress'),
-  progressShell: document.getElementById('progressShell'),
-  next: document.getElementById('next'),
-  enter: document.getElementById('enter'),
-  boot: document.getElementById('boot'),
-  sound: document.getElementById('sound'),
-  r...[truncated]
+  progressShell: document.g
