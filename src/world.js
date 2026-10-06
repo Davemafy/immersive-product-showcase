@@ -322,8 +322,8 @@ export function createCulturalWorld(canvas) {
   });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = isMobile ? .88 : 1.04;
-  renderer.setClearColor(0x060708, 1);
+  renderer.toneMappingExposure = isMobile ? 1.22 : 1.38;
+  renderer.setClearColor(0x101923, 1);
   renderer.shadowMap.enabled = !isMobile;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -334,21 +334,23 @@ export function createCulturalWorld(canvas) {
   pmrem.dispose();
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x07090c);
+  scene.background = new THREE.Color(0x142231);
   scene.environment = envRT.texture;
-  scene.environmentIntensity = .55;
-  scene.fog = new THREE.FogExp2(0x0a0c10, isMobile ? .0165 : .012);
+  scene.environmentIntensity = 1.0;
+  scene.fog = new THREE.FogExp2(0x172431, isMobile ? .0105 : .0072);
 
   const camera = new THREE.PerspectiveCamera(isMobile ? 65 : 54, 1, .08, 500);
-  camera.position.set(0, 5.1, 56);
+  camera.position.set(0, 1.72, 50);
 
   const world = new THREE.Group();
   scene.add(world);
 
-  const hemi = new THREE.HemisphereLight(0x60758d, 0x120e09, isMobile ? .9 : 1.3);
+  const hemi = new THREE.HemisphereLight(0x9db8d6, 0x3a2418, isMobile ? 1.8 : 2.35);
   scene.add(hemi);
+  const cityFill = new THREE.AmbientLight(0x6e7f91, isMobile ? .62 : .82);
+  scene.add(cityFill);
 
-  const moon = new THREE.DirectionalLight(0xaecbff, isMobile ? 1.35 : 2.0);
+  const moon = new THREE.DirectionalLight(0xcfe0ff, isMobile ? 2.0 : 3.4);
   moon.position.set(-26, 58, 12);
   moon.castShadow = !isMobile;
   if (!isMobile) {
@@ -365,8 +367,8 @@ export function createCulturalWorld(canvas) {
     new THREE.ShaderMaterial({
       side: THREE.BackSide,
       uniforms: {
-        topColor: { value: new THREE.Color(0x07101c) },
-        bottomColor: { value: new THREE.Color(0x151619) },
+        topColor: { value: new THREE.Color(0x0b1b2d) },
+        bottomColor: { value: new THREE.Color(0x4a3b32) },
         offset: { value: 18 },
         exponent: { value: .65 }
       },
@@ -734,65 +736,218 @@ export function createCulturalWorld(canvas) {
     }
   }
 
-  const cameraShots = [
-    { p:[0,5.1,56], l:[0,3,14], fov:54 },
-    { p:[-2.8,4.4,39], l:[-10.5,3.3,28], fov:50 },
-    { p:[1.8,5.6,27], l:[0,3.5,-2], fov:49 },
-    { p:[4.8,4.9,15], l:[10.8,4.2,17], fov:48 },
-    { p:[-3.8,4.8,3], l:[-10.7,4.5,-8], fov:49 },
-    { p:[5.2,4.6,-8], l:[10.8,4.4,17], fov:47 },
-    { p:[1.2,4.5,-28], l:[0,3.7,-46], fov:50 },
-    { p:[31,38,-39], l:[0,3,-18], fov:56 }
-  ].map(s=>({p:new THREE.Vector3(...s.p),l:new THREE.Vector3(...s.l),fov:s.fov}));
+  // ---------------------------------------------------------------------------
+  // FREE WORLD CONTROLS
+  // Adapted from the movement architecture in imsarah/threejs-world (MIT):
+  // grounded WASD + pointer-lock on desktop, split move/look touch on mobile.
+  // There is no authored camera rail and no narrative step progression.
+  // ---------------------------------------------------------------------------
+  const POIS = [
+    { key:'records', name:'OBSIDIAN RECORDS', x:-10.4, z:29 },
+    { key:'books', name:'ATLAS BOOKS', x:-10.4, z:11 },
+    { key:'cinema', name:'ATLAS CINEMA', x:-10.4, z:-8 },
+    { key:'listening', name:'ATLAS LISTENING ROOM', x:10.4, z:17 },
+    { key:'cafe', name:'ATLAS CAFÉ', x:10.4, z:-3 },
+    { key:'atelier', name:'THE ATELIER', x:10.4, z:-23 }
+  ];
 
-  let act = 0;
-  let signal1 = 'FRANK OCEAN';
-  let signal2 = 'JIL SANDER';
-  let targetShot = 0;
-  const look = new THREE.Vector3(0,3,14);
-  const targetQuat = new THREE.Quaternion();
-  const lookMatrix = new THREE.Matrix4();
-
-  const actHighlights = {
-    0: [],
-    1: ['records'],
-    2: ['records','books','cinema','listening','cafe','atelier'],
-    3: ['listening','atelier','cafe'],
-    4: ['atelier','listening','cinema'],
-    5: ['listening'],
-    6: ['listening','cinema','records'],
-    7: ['records','books','cinema','listening','cafe','atelier']
+  const signals = {
+    'FRANK OCEAN': { focus:['records','listening','atelier'], fog:0x172431, sky:0x9db8d6 },
+    'THE BEAR': { focus:['cafe','cinema','atelier'], fog:0x2a2421, sky:0xb9a38e },
+    'AĒSOP': { focus:['atelier','books','cafe'], fog:0x202824, sky:0xa9b9a8 },
+    'DUNE': { focus:['cinema','books','listening'], fog:0x302721, sky:0xc0a58c },
+    'SEOUL': { focus:['listening','cafe','atelier'], fog:0x162633, sky:0x9dc8dd }
   };
 
-  function updateStoreLighting() {
-    const hi = new Set(actHighlights[act] || []);
-    for (const [key,s] of Object.entries(stores)) {
-      const base = s.glow.userData.baseIntensity || 4;
-      const active = hi.has(key);
-      s.glow.intensity = active ? base * 1.45 : base * .42;
-      s.sign.material.opacity = active ? 1 : .74;
-    }
-    if (act === 5) {
-      stores.listening.glow.color.setHex(0xffc36e);
-      stores.listening.glow.intensity = (stores.listening.glow.userData.baseIntensity || 5) * 2.0;
-    } else {
-      stores.listening.glow.color.setHex(0xff9c5a);
+  let activeSignal = 'FRANK OCEAN';
+  function applySignal(name){
+    activeSignal = signals[name] ? name : activeSignal;
+    const cfg = signals[activeSignal];
+    scene.fog.color.setHex(cfg.fog);
+    hemi.color.setHex(cfg.sky);
+    const focus = new Set(cfg.focus);
+    for(const key of Object.keys(stores)){
+      const s=stores[key];
+      const base=s.glow.userData.baseIntensity || 5;
+      s.glow.intensity=focus.has(key) ? base*1.55 : base*.72;
+      s.sign.material.opacity=focus.has(key) ? 1 : .82;
     }
   }
 
-  function setAct(next) {
-    act = clamp(next,0,7);
-    targetShot = act;
-    updateStoreLighting();
+  class FreeWalk {
+    constructor(camera, dom){
+      this.camera=camera;
+      this.dom=dom;
+      this.keys=new Set();
+      this.yaw=0;
+      this.pitch=-.045;
+      this.vel=new THREE.Vector3();
+      this.wish=new THREE.Vector3();
+      this.forward=new THREE.Vector3();
+      this.right=new THREE.Vector3();
+      this.eye=1.72;
+      this.vy=0;
+      this.air=0;
+      this.grounded=true;
+      this.locked=false;
+      this.moveId=null;
+      this.lookId=null;
+      this.joyStart={x:0,y:0};
+      this.joy={x:0,y:0};
+      this.lookLast={x:0,y:0};
+      this.lookStart={x:0,y:0,t:0};
+      this.mouseDown=false;
+      this.bob=0;
+      this.baseFov=isMobile?66:58;
+
+      camera.position.set(0,this.eye,50);
+      camera.rotation.order='YXZ';
+      camera.rotation.set(this.pitch,this.yaw,0);
+
+      window.addEventListener('keydown',e=>{
+        this.keys.add(e.code);
+        if(e.code==='Space' && this.grounded){
+          this.vy=6.7;
+          this.grounded=false;
+        }
+      });
+      window.addEventListener('keyup',e=>this.keys.delete(e.code));
+      window.addEventListener('blur',()=>this.keys.clear());
+
+      if(!isMobile){
+        dom.addEventListener('click',()=>{
+          if(document.pointerLockElement!==dom){
+            const p=dom.requestPointerLock();
+            if(p && p.catch) p.catch(()=>{});
+          }
+        });
+        document.addEventListener('pointerlockchange',()=>{
+          this.locked=document.pointerLockElement===dom;
+          window.dispatchEvent(new CustomEvent('atlas-lock',{detail:{locked:this.locked}}));
+        });
+        document.addEventListener('mousemove',e=>{
+          if(!this.locked)return;
+          this.look(e.movementX,e.movementY);
+        });
+      }else{
+        dom.addEventListener('touchstart',e=>this.touchStart(e),{passive:false});
+        dom.addEventListener('touchmove',e=>this.touchMove(e),{passive:false});
+        dom.addEventListener('touchend',e=>this.touchEnd(e),{passive:false});
+        dom.addEventListener('touchcancel',e=>this.touchEnd(e),{passive:false});
+      }
+    }
+
+    look(dx,dy){
+      this.yaw-=dx*.00235;
+      this.pitch-=dy*.00215;
+      this.pitch=Math.max(-1.32,Math.min(1.28,this.pitch));
+    }
+
+    touchStart(e){
+      e.preventDefault();
+      const half=innerWidth*.5;
+      for(const t of Array.from(e.changedTouches)){
+        if(t.clientX<half && this.moveId===null){
+          this.moveId=t.identifier;
+          this.joyStart.x=t.clientX;
+          this.joyStart.y=t.clientY;
+          this.joy.x=0;
+          this.joy.y=0;
+          window.dispatchEvent(new CustomEvent('atlas-stick',{detail:{x:t.clientX,y:t.clientY,active:true}}));
+        }else if(this.lookId===null){
+          this.lookId=t.identifier;
+          this.lookLast.x=t.clientX;
+          this.lookLast.y=t.clientY;
+          this.lookStart={x:t.clientX,y:t.clientY,t:performance.now()};
+        }
+      }
+    }
+
+    touchMove(e){
+      e.preventDefault();
+      for(const t of Array.from(e.changedTouches)){
+        if(t.identifier===this.moveId){
+          const dx=t.clientX-this.joyStart.x;
+          const dy=t.clientY-this.joyStart.y;
+          const r=58;
+          this.joy.x=Math.max(-1,Math.min(1,dx/r));
+          this.joy.y=Math.max(-1,Math.min(1,-dy/r));
+          window.dispatchEvent(new CustomEvent('atlas-stick',{detail:{x:t.clientX,y:t.clientY,active:true}}));
+        }else if(t.identifier===this.lookId){
+          this.look(t.clientX-this.lookLast.x,t.clientY-this.lookLast.y);
+          this.lookLast.x=t.clientX;
+          this.lookLast.y=t.clientY;
+        }
+      }
+    }
+
+    touchEnd(e){
+      e.preventDefault();
+      for(const t of Array.from(e.changedTouches)){
+        if(t.identifier===this.moveId){
+          this.moveId=null;
+          this.joy.x=0;this.joy.y=0;
+          window.dispatchEvent(new CustomEvent('atlas-stick',{detail:{active:false}}));
+        }else if(t.identifier===this.lookId){
+          const moved=Math.hypot(t.clientX-this.lookStart.x,t.clientY-this.lookStart.y);
+          if(performance.now()-this.lookStart.t<220 && moved<14 && this.grounded){
+            this.vy=6.7;this.grounded=false;
+          }
+          this.lookId=null;
+        }
+      }
+    }
+
+    update(dt){
+      let mx=this.joy.x;
+      let mz=this.joy.y;
+      if(this.keys.has('KeyW')||this.keys.has('ArrowUp'))mz+=1;
+      if(this.keys.has('KeyS')||this.keys.has('ArrowDown'))mz-=1;
+      if(this.keys.has('KeyA')||this.keys.has('ArrowLeft'))mx-=1;
+      if(this.keys.has('KeyD')||this.keys.has('ArrowRight'))mx+=1;
+
+      const len=Math.hypot(mx,mz);
+      if(len>1){mx/=len;mz/=len;}
+
+      const sprint=this.keys.has('ShiftLeft')||this.keys.has('ShiftRight');
+      const speed=sprint?7.8:4.35;
+      const sin=Math.sin(this.yaw),cos=Math.cos(this.yaw);
+      this.forward.set(-sin,0,-cos);
+      this.right.set(cos,0,-sin);
+      this.wish.set(
+        this.forward.x*mz+this.right.x*mx,
+        0,
+        this.forward.z*mz+this.right.z*mx
+      );
+      if(this.wish.lengthSq()>0)this.wish.normalize().multiplyScalar(speed);
+      const d=1-Math.exp(-dt*11);
+      this.vel.lerp(this.wish,d);
+
+      const p=this.camera.position;
+      p.x+=this.vel.x*dt;
+      p.z+=this.vel.z*dt;
+
+      // Keep the visitor in the authored district while preserving free movement.
+      p.x=Math.max(-12.2,Math.min(12.2,p.x));
+      p.z=Math.max(-64,Math.min(56,p.z));
+
+      this.vy-=20.5*dt;
+      this.air=Math.max(0,this.air+this.vy*dt);
+      if(this.air<=0){this.air=0;this.vy=0;this.grounded=true;}
+
+      const moving=this.vel.length();
+      if(moving>.15 && this.grounded)this.bob+=dt*(sprint?11:8.2);
+      const bobY=this.grounded?Math.sin(this.bob*2)*.018*Math.min(1,moving/4):0;
+      p.y=this.eye+this.air+bobY;
+
+      this.camera.rotation.set(this.pitch,this.yaw,Math.sin(this.bob)*.0016*Math.min(1,moving/4));
+      const targetFov=this.baseFov+(sprint&&moving>5?5:0);
+      this.camera.fov=damp(this.camera.fov,targetFov,6,dt);
+      this.camera.updateProjectionMatrix();
+    }
   }
 
-  function setSignals(a,b) {
-    if(a) signal1=a;
-    if(b) signal2=b;
-    const warm = /FRANK|AĒSOP|BEAR|BLUE|JIL/.test(signal1 + ' ' + signal2);
-    hemi.color.setHex(warm ? 0x6c7685 : 0x617d94);
-    streetMat.clearcoatRoughness = warm ? .075 : .11;
-  }
+  const controls=new FreeWalk(camera,renderer.domElement);
 
   let frameTime=0,frameCount=0,pixelRatio=1;
   const clock=new THREE.Clock();
@@ -800,7 +955,7 @@ export function createCulturalWorld(canvas) {
   function resize(){
     const w=innerWidth,h=innerHeight;
     camera.aspect=w/h;
-    camera.fov=(w/h<.8)?64:cameraShots[targetShot].fov;
+    camera.fov=(w/h<.8)?68:controls.baseFov;
     camera.updateProjectionMatrix();
     pixelRatio=Math.min(devicePixelRatio||1,isMobile?1.12:1.55);
     renderer.setPixelRatio(pixelRatio);
@@ -811,16 +966,8 @@ export function createCulturalWorld(canvas) {
   function animate(){
     const dt=Math.min(.05,clock.getDelta());
     const t=clock.elapsedTime;
-    const shot=cameraShots[targetShot];
-    const k=reducedMotion?1:(1-Math.exp(-dt*1.35));
-    camera.position.lerp(shot.p,k);
-    look.lerp(shot.l,reducedMotion?1:(1-Math.exp(-dt*1.55)));
-    camera.fov=damp(camera.fov,(camera.aspect<.8?64:shot.fov),1.6,dt);
-    camera.updateProjectionMatrix();
-    lookMatrix.lookAt(camera.position,look,camera.up);
-    targetQuat.setFromRotationMatrix(lookMatrix);
-    camera.quaternion.slerp(targetQuat,k);
 
+    controls.update(dt);
     rainMat.uniforms.uTime.value=t;
     hazeGroup.position.x=Math.sin(t*.035)*2.2;
     vinyl.rotation.x=t*.04;
@@ -833,12 +980,10 @@ export function createCulturalWorld(canvas) {
       p.position.y=Math.sin(t*1.3+p.userData.phase)*.012;
     });
 
-    frameTime+=dt;
-    frameCount++;
+    frameTime+=dt;frameCount++;
     if(frameTime>2.4){
       const fps=frameCount/frameTime;
-      frameTime=0;
-      frameCount=0;
+      frameTime=0;frameCount=0;
       if(fps<39&&pixelRatio>.78){
         pixelRatio=Math.max(.78,pixelRatio-.12);
         renderer.setPixelRatio(pixelRatio);
@@ -849,22 +994,40 @@ export function createCulturalWorld(canvas) {
     requestAnimationFrame(animate);
   }
 
+  function nearest(){
+    const p=camera.position;
+    let best=null,dist=1e9;
+    for(const poi of POIS){
+      const d=Math.hypot(p.x-poi.x,p.z-poi.z);
+      if(d<dist){dist=d;best=poi;}
+    }
+    return dist<12 ? {key:best.key,name:best.name,distance:dist} : null;
+  }
+
+  applySignal(activeSignal);
   resize();
-  updateStoreLighting();
   animate();
   addEventListener('resize',resize);
 
   return {
-    renderer, scene, camera, isMobile,
-    setAct,
-    setSignals,
-    getState:()=>({act,signal1,signal2,isMobile,pixelRatio}),
-    pulse(key='listening'){
+    renderer,scene,camera,isMobile,
+    setSignals(a){if(a)applySignal(a);},
+    pulse(key){
       const s=stores[key];
       if(!s)return;
       const base=s.glow.userData.baseIntensity||5;
       s.glow.intensity=base*2.8;
-      setTimeout(updateStoreLighting,500);
+      setTimeout(()=>applySignal(activeSignal),480);
+    },
+    getState(){
+      return {
+        signal:activeSignal,
+        isMobile,
+        pixelRatio,
+        locked:controls.locked,
+        position:{x:camera.position.x,y:camera.position.y,z:camera.position.z},
+        nearby:nearest()
+      };
     }
   };
 }
