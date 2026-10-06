@@ -285,7 +285,7 @@ for(let i=0;i<pCount;i++){
   pSeed[i]=Math.random();
 }
 const pGeo=new THREE.BufferGeometry();pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
-const particles=new THREE.Points(pGeo,new THREE.PointsMaterial({color:0xcfd5c7,size:isMobile?.055:.075,transparent:true,opacity:.23,depthWrite:false,blending:THREE.AdditiveBlending}));
+const particles=new THREE.Points(pGeo,new THREE.PointsMaterial({color:0xcfd5c7,size:isMobile ? .055 : .075,transparent:true,opacity:.23,depthWrite:false,blending:THREE.AdditiveBlending}));
 particles.userData.seed=pSeed;world.add(particles);
 
 // Evidence pylons hidden until act 6
@@ -447,10 +447,10 @@ function applyAct(force=false){
   const targetStrength=worldAwake?1:0;
   signalCore.material.emissiveIntensity=worldAwake?1.15:0;
   coreHalo.intensity=worldAwake?3.8:0;
-  orbitRing.material.opacity=worldAwake?.45:0;
+  orbitRing.material.opacity=worldAwake ? .45 : 0;
 
   bridges.children.forEach((b,i)=>{
-    b.material.opacity = act>=2 ? (act===3?.42:.25) : 0;
+    b.material.opacity = act>=2 ? (act===3 ? .42 : .25) : 0;
   });
   evidencePylons.children.forEach(g=>g.visible=act===6);
 
@@ -465,7 +465,7 @@ function applyAct(force=false){
     if(act>=5 && i===0)mult=1.18; // baseline music-like option retreats
     if(act>=5 && i===1)mult=.55; // design territory pulls inward
     o.group.userData.target=new THREE.Vector3(base.x*mult,base.y,base.z*mult);
-    o.ring.material.opacity = act>=2 ? (i===1 && act>=5?.68:.2) : .05;
+    o.ring.material.opacity = act>=2 ? (i===1 && act>=5 ? .68 : .2) : .05;
   });
 
   if(act===5)pulseWorld();
