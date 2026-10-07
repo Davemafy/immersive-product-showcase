@@ -1,0 +1,39 @@
+ade' term below had to amputate.
+   */
+  float tc = skRaySphere( ro, rd, SK_GROUND_R + SK_CIRRUS_KM * 0.001 );
+  if ( tc <= 0.0 ) return vec4( 0.0 );
+  float tcLo = skRaySphere( ro, rd, SK_GROUND_R + ( SK_CIRRUS_KM - SK_CIRRUS_HALF ) * 0.001 );
+  float tcHi = skRaySphere( ro, rd, SK_GROUND_R + ( SK_CIRRUS_KM + SK_CIRRUS_HALF ) * 0.001 );
+  if ( tcLo <= 0.0 || tcHi <= 0.0 ) return vec4( 0.0 );
+  float distKM = tc * 1000.0;
+
+  // Distance fade, doing antialiasing as much as atmospherics: below ~15 degrees
+  // of elevation d(distance)/d(elevation) is over 400 m per screen pixel, which
+  // is several times the width of a fibre. Ending the layer at 90 km removes the
+  // whole undersampled band, and a real cirrus deck does fade into the haze there.
+  float fade = 1.0 - smoothstep( 22.0, 90.0, distKM );
+  // Above ~35 degrees the derivative blows up the other way and the field smears
+  // radially through the zenith. High cirrus overhead is thin anyway.
+  fade *= 1.0 - 0.66 * smoothstep( 0.55, 0.85, rd.y );
+  if ( fade <= 0.004 ) return vec4( 0.0 );
+
+  vec2 wind = vec2( uCloudParams2.z, uCloudParams2.w ) * uCloudParams.w;
+  vec2 pLo = ( ro + rd * tcLo ).xz * 1000.0 + wind * 2.4;
+  vec2 pHi = ( ro + rd * tcHi ).xz * 1000.0 + wind * 2.4;
+
+  /**
+   * The mip level, and DISTANCE IS THE RIGHT PROXY FOR IT.
+   *
+   * At a fixed shell altitude the deck's metres-per-pixel is proportional to
+   * the slant range, so distKM is the footprint. 12 km is roughly overhead
+   * (a fibre is tens of pixels across and deserves every octave); by 62 km a
+   * 375 m fibre is under a pixel and sampling it once can only alias.
+   */
+  float lod = smoothstep( 12.0, 62.0, distKM );
+
+  float d = 0.5 * ( skCirrusDeck( pLo, cov, lod ) + skCirrusDeck( pHi, cov, lod ) );
+  float a = clamp( d * uCloudParams2.y * fade, 0.0, 0.70 );
+  if ( a <= 0.002 ) return vec4( 0.0 );
+
+  // Optically thin: mostly forward scatter plus whatever the sky gives back.
+  // Cirrus sit above most of the aerosol, so they kee...[truncated]

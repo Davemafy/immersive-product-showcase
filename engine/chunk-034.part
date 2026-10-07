@@ -1,0 +1,34 @@
+.
+   *
+   * So it is applied here, in screen space, against the same shadow map the fog
+   * and the shafts read. Three things keep it honest:
+   *
+   *   - it is NORMALISED by the shadow at the camera, so it is purely the
+   *     RELATIVE patch. The absolute dimming is already on the DirectionalLight
+   *     (see SkySystem._applyLightIntensities) and counting it twice would put
+   *     the mean exposure of an overcast two stops down.
+   *   - it is gated on uCloudShadowStrength, the fraction of the frame's light
+   *     that is actually the direct beam. At night, at dusk, and under a solid
+   *     overcast that is ~0, so no patches are painted on a scene with no sun in
+   *     it.
+   *   - it is gated on the surface facing the sun at all. A wall in its own
+   *     shadow has no direct light for a cloud to take away, and darkening it
+   *     anyway is what makes a screen-space approximation read as a stain. One
+   *     tap of the prepass normal buffer answers that.
+   */
+  if ( uCloudShadowStrength > 0.004 && !sky ) {
+    vec3 wp = uCamPos + dir * dist;
+    float cloudPatch = skCloudShadowMapped( wp.xz ) / max( 0.05, skCloudShadowMapped( uCamPos.xz ) );
+    vec4 nrm = texture( tNormal, vUv );
+    float facing = 1.0;
+    if ( nrm.z > 0.5 ) {
+      vec3 n = skDecodeNormal( nrm.xy );
+      facing = smoothstep( 0.0, 0.30, dot( n, owSunDirView ) );
+    }
+    float k = uCloudShadowStrength * facing;
+    color *= mix( 1.0, clamp( cloudPatch, 0.34, 1.35 ), k );
+  }
+
+  fragColor = vec4( color * trans + inscatter, 1.0 );
+}
+`;class NI{constructor(t,e,s={}){this.order=-70,this.enabled=!0;const i=e.csm;this.marchEnabled=s.volumetrics!==!1&&!!i;const n=s.steps??40;this.shared=t,this.scale=s.scale??.5,this.width=1,this.height=1,this.rtMarch=null,this.rtHistory=[null,null],this._flip=0,this._reset=!0;const o={uMieScale:t.uMieScale,uViewPos:t.uViewPos,uSkyAmbientLut:t.uSkyAmbientLut,uCloudParams:t.uCloudParams,uCloudParams2:t.uCloudParams2,uInvProj:t.uInvProj,uCamWorld:t.uC...[truncated]

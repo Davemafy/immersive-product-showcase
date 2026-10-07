@@ -1,0 +1,35 @@
+s what lets a 12 m facade break up.
+  float macro = clamp( ( mac1.r * 0.55 + mac2.b * 0.45 - 0.5 ) * owMacroBig.x + 0.5, 0.0, 1.0 );
+  alb.rgb *= mix( 1.0, 0.55 + 0.92 * macro, owMacroP.y );
+  // A second, much larger band (8-16 m features): the difference between one
+  // sun-bleached end of a facade and the damp end, which is the signal that
+  // survives at 40 m when everything finer has mipped away.
+  if ( owMacroBig.y > 0.0 ) {
+    vec2 bigUv = macroUv * owMacroBig.z;
+    float big = texture2D( owMacroTex, bigUv ).r * 0.62
+              + texture2D( owMacroTex, bigUv * 0.37 + 0.61 ).b * 0.38;
+    big = clamp( ( big - 0.5 ) * 2.3, -1.0, 1.0 );
+    alb.rgb *= 1.0 + big * owMacroBig.y;
+    orm.g = clamp( orm.g - big * owMacroBig.y * 0.55, 0.0, 1.0 );
+  }
+  alb.rgb *= mix( vec3( 1.0 ), vec3( 1.05, 1.0, 0.93 ), ( mac2.r - 0.5 ) * owMacroP.w );
+  // Roughness has to vary or nothing in the frame ever glints: a broad patch
+  // term plus a tighter one, both signed, plus the micro tooth.
+  orm.g = clamp( orm.g + ( mac1.g - 0.5 ) * owMacroP.z
+                       + ( mac1.a - 0.5 ) * 0.16
+                       - owMicro * 0.07 * owDetFade, 0.0, 1.0 );
+
+  #ifdef OW_MACRO_RELIEF
+    /**
+     * Ruts, drifts, bellied render and bowed panels at 1-4 m. The tile cannot
+     * carry anything this large, so the shading normal is tilted by the
+     * gradient of the macro map.
+     *
+     * THIS USED TO BE GATED TO UP-FACING SURFACES ONLY ('* owUpFace'), which
+     * meant a twelve-metre facade got no normal perturbation at any scale
+     * between its 2 mm tooth and its 8 m colour wash. Under the hard low sun
+     * this game is built around, that is precisely the condition in which a
+     * wall resolves to a smooth luminance ramp and nothing else — the "couple
+     * of soft smears" an adversarial critic measured on a sunlit stucco
+     * elevation. A real wall is never plane: the render bellies between its
+     * fixings, the brick courses wander out of plumb, a precast pan...[truncated]

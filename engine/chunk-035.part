@@ -1,0 +1,15 @@
+eedsUpdate=!0,this._state="done"}dispose(){this.texture.dispose()}}const o9=`
+precision highp float;
+uniform sampler2D tSrc;
+uniform vec2 uDstTexel;
+in vec2 vUv;
+layout(location = 0) out vec4 fragColor;
+void main() {
+  vec2 o = uDstTexel * 0.25;
+  vec4 c = texture( tSrc, vUv + vec2( -o.x, -o.y ) )
+         + texture( tSrc, vUv + vec2(  o.x, -o.y ) )
+         + texture( tSrc, vUv + vec2( -o.x,  o.y ) )
+         + texture( tSrc, vUv + vec2(  o.x,  o.y ) );
+  fragColor = c * 0.25;
+}
+`,La=32,lr=16,Hm=.282095,Wm=.488603,_2=1.092548,a9=.315392,r9=.546274;function pp(a,t,e,s,i){const n=a[0].x*.886227+a[1].x*1.023328*e+a[2].x*1.023328*s+a[3].x*1.023328*t+a[4].x*.858086*t*e+a[5].x*.858086*e*s+a[6].x*(.743125*s*s-.247708)+a[7].x*.858086*t*s+a[8].x*.429043*(t*t-e*e),o=a[0].y*.886227+a[1].y*1.023328*e+a[2].y*1.023328*s+a[3].y*1.023328*t+a[4].y*.858086*t*e+a[5].y*.858086*e*s+a[6].y*(.743125*s*s-.247708)+a[7].y*.858086*t*s+a[8].y*.429043*(t*t-e*e),r=a[0].z*.886227+a[1].z*1.023328*e+a[2].z*1.023328*s+a[3].z*1.023328*t+a[4].z*.858086*t*e+a[5].z*.858086*e*s+a[6].z*(.743125*s*s-.247708)+a[7].z*.858086*t*s+a[8].z*.429043*(t*t-e*e);return i.set(n,o,r)}const x2=Hm*2*Math.PI,b2=Wm*Math.PI;class p5{constructor(){this.mid=Mo(128,64,{name:"sky-irr-mid"}),this.small=Mo(La,lr,{name:"sky-irr-small"}),this.down=new Za("sky-irr-down",o9,{tSrc:{value:null},uDstTexel:{value:new wt}}),this.sh=new Array(9);for(let e=0;e<9;e++)this.sh[e]=new T;this.valid=!1,this._buf=new Uint16Array(La*lr*4),this._dir=new Float32Array(La*lr*3),this._w=new Float32Array(La*lr),this._tmp=new T;const t=2*Math.PI/La*(Math.PI/lr);for(let e=0;e<lr;e++){const s=((e+.5)/lr-.5)*Math.PI,i=Math.sin(s),n=Math.cos(s);for(let o=0;o<La;o++){const r=((o+.5)/La-.5)*2*Math.PI,l=e*La+o;this._dir[l*3]=n*Math.cos(r),this._dir[l*3+1]=i,this._dir[l*3+2]=n*Math.sin(r),this._w[l]=t*n}}}update(t,e){const s=this.down.uniforms;s.tSrc.value=e,s.uDstTexel.value.set(1/128,1/64),this.down.render(t,this.mid),s.tSrc.value=this.mid.texture,s.uDstTexel....[truncated]
