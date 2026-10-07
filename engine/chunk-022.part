@@ -1,0 +1,49 @@
+), 0.6), spall * 0.7);
+
+  // ---- staining ----------------------------------------------------------
+  // Tyre rubber lays a dark film; carbonation and lime leach put a pale bloom
+  // along the joints. Both are what stop a slab reading as flat grey card.
+  float rubber = smoothstep(0.3, 0.9, owFbm01(vec2(p.x * 1.4, p.y * 3.2), vec2(P.x * 1.4, P.y * 3.0), 4, 0.55));
+  c *= 1.0 - rubber * 0.16 * (0.3 + 0.7 * lane);
+  float bloom = smoothstep(0.55, 0.9, owFbm01(p * 4.0 + 7.0, P * 4.0, 4, 0.55)) * (0.4 + 0.6 * jointM);
+  c = mix(c, cPale * 1.06, bloom * 0.30);
+  rough += bloom * 0.05;
+
+  float cavity = 1.0 - smoothstep(0.46, 0.70, h);
+  c = mix(c, owSRGB(vec3(0.180, 0.175, 0.168)), cavity * 0.30);
+
+  alb = clamp(c, vec3(0.02), vec3(0.82));
+  rough = clamp(rough, 0.32, 0.99);
+  ao = clamp(ao, 0.30, 1.0);
+  h = clamp(h, 0.0, 1.0);
+}
+`,rp=`
+void owSurface(vec2 uv, out vec3 alb, out float h, out float rough, out float metal, out float ao){
+  const vec2 P = vec2(8.0);
+  vec2 p = uv * P + uSeed * 3.3;
+
+  float fan   = clamp(uParam.x, 0.0, 1.0);
+  float fill  = clamp(uParam.y, 0.0, 1.0);
+  float wear  = clamp(uParam.z, 0.0, 1.0);
+  float warm  = clamp(uParam.w, 0.0, 1.0);
+
+  // ---- the lattice -------------------------------------------------------
+  // 10x20 cm setts. Straight courses shift half a block each row; the fan
+  // rotates the whole lattice by an angle that varies across the tile, which is
+  // how a real Segmentbogen pavement is laid around a crown.
+  vec2 q = uv;
+  float ang = (q.x - 0.5) * fan * 1.15;
+  q = owRot(q - 0.5, ang * (1.0 - abs(q.y - 0.5) * 0.6)) + 0.5;
+
+  const float COLS = 10.0, ROWS = 10.0;
+  float rowF = q.y * ROWS;
+  float row = floor(rowF);
+  float colF = q.x * COLS + mod(row, 2.0) * 0.5;
+  float col = floor(colF);
+  vec2 id = vec2(mod(col, COLS), row);
+  vec2 f = vec2(fract(colF), fract(rowF));
+
+  vec4 rnd = owHash42(id + uSeed * 2.0);
+  vec4 rnd2 = owHash42(id * 1.71 + 13.0 + uSeed);
+
+  // Hand-split blocks are not square: each is a few per...[truncated]

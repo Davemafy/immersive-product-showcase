@@ -1,0 +1,37 @@
+2(float(x), float(y));
+      vec2 cell = mod(ip + g, vec2(CELLS));
+      vec4 r = owHash42(cell + uSeed * 2.0);
+      vec4 r2 = owHash42(cell * 1.7 + 9.0 + uSeed);
+      if (r2.w > density) continue;
+      vec2 centre = g + 0.15 + r.xy * 0.7 - fp;
+      float ang = r.z * 6.28318;
+      vec2 q = owRot(centre, ang);
+      vec2 s = mix(vec2(0.32 + r.w * 0.16, 0.17 + r2.x * 0.08),
+                   vec2(0.40 + r.w * 0.14, 0.075 + r2.x * 0.035), narrow);
+      vec2 e = q / s;
+      float d = length(e);
+      // an ovate blade: pinched at the tip, rounded at the base
+      float pinch = 1.0 - 0.42 * max(e.x, 0.0) * 0.5;
+      // a serrated margin, and the serration size varies per leaf
+      float serr = sin(atan(e.y, e.x) * (18.0 + r2.y * 16.0)) * (0.020 + 0.022 * r2.z);
+      float cover = smoothstep(1.02 + serr, 0.90 + serr, d / max(pinch, 0.3));
+      // a bite out of one side, because a real leaf has been eaten
+      float bite = smoothstep(0.30, 0.0, length(e - vec2(0.5 + r2.z, 0.9))) * step(0.72, r2.y);
+      cover *= 1.0 - bite;
+      if (cover > 0.01){
+        float depth = r2.y;
+        if (depth > bestDepth){
+          // the midrib, and the secondary veins branching off it at an angle
+          float mid = 1.0 - smoothstep(0.0, 0.09, abs(e.y));
+          float sideV = smoothstep(0.72, 1.0, abs(fract(e.x * 4.0 + abs(e.y) * 2.4) * 2.0 - 1.0));
+          float vein = clamp(mid + sideV * 0.55, 0.0, 1.0);
+
+          vec3 cSpring = owSRGB(vec3(0.245, 0.362, 0.098));
+          vec3 cSummer = owSRGB(vec3(0.108, 0.212, 0.070));
+          vec3 cDeep   = owSRGB(vec3(0.062, 0.132, 0.052));
+          vec3 cAutumn = owSRGB(vec3(0.480, 0.268, 0.070));
+          vec3 cDry    = owSRGB(vec3(0.360, 0.288, 0.108));
+          vec3 lc = mix(cSpring, cSummer, smoothstep(0.0, 0.55, season));
+          lc = mix(lc, mix(cAutumn, cDry, r2.z), smoothstep(0.55, 1.0, season));
+          // Every leaf on a tree is a different age and gets a different amount
+          // of sun; a canopy of...[truncated]

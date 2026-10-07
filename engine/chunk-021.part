@@ -1,0 +1,63 @@
+vec2(1.0, 0.0), per) + 1.7);
+  float c = owHash12(mod(i + vec2(0.0, 1.0), per) + 1.7);
+  float d = owHash12(mod(i + vec2(1.0, 1.0), per) + 1.7);
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+// ------------------------------------------------------------------ fbm ----
+float owFbm(vec2 p, vec2 per, int oct, float gain){
+  float s = 0.0, a = 0.5, n = 0.0;
+  for (int i = 0; i < 10; i++){
+    if (i >= oct) break;
+    s += a * owNoise(p, per);
+    n += a;
+    p *= 2.0; per *= 2.0; a *= gain;
+  }
+  return s / max(n, 1e-4);
+}
+float owFbm01(vec2 p, vec2 per, int oct, float gain){ return owFbm(p, per, oct, gain) * 0.5 + 0.5; }
+
+/** Ridged fbm — sharp creases, good for cracks / rock. Returns [0,1]. */
+float owRidged(vec2 p, vec2 per, int oct, float gain){
+  float s = 0.0, a = 0.5, n = 0.0;
+  for (int i = 0; i < 10; i++){
+    if (i >= oct) break;
+    float v = 1.0 - abs(owNoise(p, per));
+    s += a * v * v;
+    n += a;
+    p *= 2.0; per *= 2.0; a *= gain;
+  }
+  return s / max(n, 1e-4);
+}
+
+/** Billowy fbm — puffy clumps, good for rust blooms and clay. */
+float owBillow(vec2 p, vec2 per, int oct, float gain){
+  float s = 0.0, a = 0.5, n = 0.0;
+  for (int i = 0; i < 10; i++){
+    if (i >= oct) break;
+    s += a * abs(owNoise(p, per));
+    n += a;
+    p *= 2.0; per *= 2.0; a *= gain;
+  }
+  return s / max(n, 1e-4);
+}
+
+// --------------------------------------------------------- domain warp -----
+vec2 owWarp(vec2 p, vec2 per, float amp, int oct){
+  vec2 q = vec2(owFbm(p + vec2(1.7, 9.2), per, oct, 0.5),
+                owFbm(p + vec2(8.3, 2.8), per, oct, 0.5));
+  return p + amp * q;
+}
+
+// -------------------------------------------------------------- worley -----
+/**
+ * Periodic Worley/Voronoi.
+ *  .x = F1 distance, .y = F2 distance, .z = hash id of the F1 cell,
+ *  .w = second hash of the F1 cell.
+ */
+vec4 owWorley(vec2 p, vec2 per, float jitter){
+  vec2 ip = floor(p), fp = fract(p);
+  float f1 = 8.0, f2 = 8.0;
+  vec2 id = vec2(0.0);
+  for (int y = -1; y <= 1; y++){
+    fo...[truncated]

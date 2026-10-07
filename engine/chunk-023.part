@@ -1,0 +1,61 @@
+irM * 0.9);
+  h = mix(h, 0.66, repairM * 0.8);
+
+  // ---- what a city puts on a sidewalk ------------------------------------
+  // Flattened gum, in a scatter that gets denser near the kerb.
+  vec4 gum = owWorley(p * 8.0 + 61.0, P * 8.0, 1.0);
+  float gumM = smoothstep(0.075, 0.02, gum.x) * step(0.90, gum.w);
+  c = mix(c, owSRGB(vec3(0.135, 0.128, 0.122)), gumM * 0.8);
+  rough = mix(rough, 0.55, gumM * 0.7);
+  h += gumM * 0.008;
+
+  // salt bloom and the general grey traffic film
+  float film = smoothstep(0.35, 0.85, owFbm01(p * 4.5, P * 4.5, 4, 0.55));
+  c *= 1.0 - film * 0.12 * (0.4 + age);
+  float bloom = smoothstep(0.62, 0.92, owFbm01(p * 2.2 + 13.0, P * 2.2, 4, 0.58));
+  c = mix(c, cPale * 1.08, bloom * 0.22);
+
+  float cavity = 1.0 - smoothstep(0.52, 0.76, h);
+  c = mix(c, owSRGB(vec3(0.160, 0.155, 0.146)), cavity * 0.34);
+
+  alb = clamp(c, vec3(0.02), vec3(0.82));
+  rough = clamp(rough, 0.34, 0.99);
+  ao = clamp(ao, 0.28, 1.0);
+  h = clamp(h, 0.0, 1.0);
+}
+`,Dd=`
+varying vec2 vUv;
+void main(){
+  vUv = uv;
+  gl_Position = vec4(position.xy, 0.0, 1.0);
+}
+`,xD=`
+precision highp float;
+varying vec2 vUv;
+uniform float uSeed;
+uniform int   uOutput;
+uniform vec3  uTintA;
+uniform vec3  uTintB;
+uniform vec4  uParam;
+`,bD=`
+void main(){
+  vec3 alb = vec3(0.5);
+  float h = 0.5, rough = 0.5, metal = 0.0, ao = 1.0;
+  owSurface(vUv, alb, h, rough, metal, ao);
+  if (uOutput == 0)      gl_FragColor = vec4(h, h, h, 1.0);
+  else if (uOutput == 1) gl_FragColor = vec4(alb, h);
+  else                   gl_FragColor = vec4(ao, rough, metal, 1.0);
+}
+`,MD=`
+precision highp float;
+varying vec2 vUv;
+uniform sampler2D uHeight;
+uniform vec2 uTexel;
+uniform float uStrength;
+
+float H(vec2 o){ return texture2D(uHeight, vUv + o * uTexel).r; }
+
+void main(){
+  float tl = H(vec2(-1.0,  1.0)), t = H(vec2(0.0,  1.0)), tr = H(vec2(1.0,  1.0));
+  float l  = H(vec2(-1.0,  0.0)),                          r = H(vec2(1.0,  0.0));
+  float bl = H(vec2(-1.0, -1.0)), b = H(vec2(0.0, -1.0)), br = H(vec2(1.0, -...[truncated]

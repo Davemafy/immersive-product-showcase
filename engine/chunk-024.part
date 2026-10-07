@@ -1,0 +1,53 @@
+as the finish, just darker and coarser —
+  // a chip is a shallow flake, not a hole punched in the wall.
+  vec3 coat = mix(c, owSRGB(vec3(0.392, 0.336, 0.284)), 0.52);
+  coat *= 0.90 + 0.20 * owFbm01(p * 18.0, P * 18.0, 3, 0.5);
+  c = mix(c, coat, chip * 0.58);
+  h -= chip * 0.05;
+  ao -= chip * 0.26;
+  rough += chip * 0.09;
+  float ckLip = max(ckSel * (smoothstep(ckSize * 1.25, ckSize, ck.x) - ckShape), 0.0);
+  c *= 1.0 + ckLip * 0.10;
+  h += ckLip * 0.010;
+
+  // water staining: tide marks and slow brown bleed
+  float stain = owFbm01(vec2(p.x * 1.6, p.y * 3.2), vec2(P.x * 1.6, P.y * 3.0), 5, 0.6);
+  float tide = smoothstep(0.60, 0.78, stain) * (1.0 - smoothstep(0.78, 0.94, stain));
+  c = mix(c, owSRGB(vec3(0.400, 0.330, 0.245)), tide * 0.45);
+  c *= 1.0 - smoothstep(0.50, 0.95, stain) * 0.34;
+  rough += tide * 0.05;
+
+  // black mould in the damp corners
+  float mould = smoothstep(0.72, 0.95, owFbm01(p * 4.0 + 25.0, P * 4.0, 5, 0.6)) *
+                smoothstep(0.45, 0.8, stain);
+  c = mix(c, owSRGB(vec3(0.085, 0.090, 0.080)), mould * 0.7);
+  rough += mould * 0.08;
+
+  // grime in recesses
+  float cavity = 1.0 - smoothstep(0.48, 0.72, h);
+  c = mix(c, owSRGB(vec3(0.22, 0.21, 0.19)), cavity * 0.30);
+
+  alb = clamp(c, vec3(0.02), vec3(0.88));
+  rough = clamp(rough, 0.35, 0.99);
+  ao = clamp(ao, 0.15, 1.0);
+  h = clamp(h, 0.0, 1.0);
+}
+`,CD=`
+void owSurface(vec2 uv, out vec3 alb, out float h, out float rough, out float metal, out float ao){
+  const vec2 P = vec2(8.0);
+  const float N = 6.0;
+  vec2 p = uv * P + uSeed * 4.4;
+
+  vec2 tp = uv * N;
+  vec2 id = floor(tp);
+  vec2 f = fract(tp);
+  vec4 rnd = owHash42(id + uSeed);
+
+  // Flat grout bed with a hard arris at the tile edge: a full-width ramp is
+  // what makes a joint read as a drawn line instead of a recess.
+  const float J = 0.045;
+  float dxj = min(f.x, 1.0 - f.x);
+  float dyj = min(f.y, 1.0 - f.y);
+  float ex = smoothstep(J * 0.70, J * 1.02, dxj);
+  float ey = smoothstep(J * 0.70, J * 1.02, dyj);
+  float face = ...[truncated]

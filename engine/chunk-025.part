@@ -1,0 +1,41 @@
+0, 4, 0.5);
+  float micro = owFbm01(p * 22.0, P * 22.0, 3, 0.5);
+
+  // ---- the coat ----------------------------------------------------------
+  // Even a factory finish is not one number: the film thickness varies across
+  // a panel, so a solid colour breathes by a couple of percent.
+  vec3 c = base * (0.975 + 0.05 * macro);
+  float r = 0.055;
+  float mtl = 0.0;
+  h = 0.72 + (fine - 0.5) * 0.006;
+  ao = 1.0;
+
+  if (finish == 1) {
+    // Metallic: the base coat holds aluminium, so it is a touch lighter and it
+    // is genuinely part-metal in the BRDF. The flake sparkle itself is a
+    // shader-side, view-dependent effect.
+    c = base * (0.985 + 0.04 * macro);
+    // The BINDER is a dielectric. The aluminium flakes suspended in it are the
+    // metal, and they are resolved per-flake by the OW_CARPAINT layer in
+    // shader.js — see the note there. Authoring an intermediate metalness on
+    // the base coat is the usual shortcut and it is physically meaningless.
+    mtl = 0.0;
+    r = 0.10 + (fine - 0.5) * 0.02;
+  } else if (finish == 2) {
+    // Matte wrap / satin respray: a real matte clear scatters, so it needs a
+    // high roughness AND a visible micro texture or it reads as untextured.
+    r = 0.62 + (micro - 0.5) * 0.14;
+    c = base * (0.94 + 0.08 * fine);
+  } else if (finish == 3) {
+    // Etch primer: flat, chalky, grey-red, with sanding scratches through it.
+    c = mix(owSRGB(vec3(0.300, 0.290, 0.285)), owSRGB(vec3(0.330, 0.212, 0.160)), 0.45);
+    c *= 0.90 + 0.20 * fine;
+    r = 0.80 + (micro - 0.5) * 0.12;
+    float sand = owScratches(p * 3.0, P * 3.0, 14.0, 1.0, 0.60);
+    sand += owScratches(p * 5.0 + 7.0, P * 5.0, 10.0, -2.0, 0.66) * 0.7;
+    c *= 1.0 - clamp(sand, 0.0, 1.0) * 0.10;
+    r += clamp(sand, 0.0, 1.0) * 0.06;
+  } else if (finish == 4) {
+    // Oxidised single-stage: the clear is gone, the pigment has chalked, and
+    // it goes pale and dead in patches following the sun exposure.
+    float chalk = smoothstep(0.20, 0.85, owFbm01(owW...[truncated]

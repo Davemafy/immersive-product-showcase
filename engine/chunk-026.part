@@ -1,0 +1,48 @@
+ 0.8, faceGrain)) * 0.35;
+  float sootM = clamp(soot * smoothstep(0.28, 0.80, sootField) * key, 0.0, 1.0);
+  // rain-washed streaks cutting down through it
+  float washed = smoothstep(0.55, 0.86, owFbm01(vec2(p.x * 5.0, p.y * 1.1), vec2(P.x * 5.0, max(P.y, 1.0)), 5, 0.55));
+  sootM *= 1.0 - washed * 0.75 * soot;
+  c = mix(c, owSRGB(vec3(0.038, 0.036, 0.034)), sootM * 0.88);
+  rough = mix(rough, 0.95, sootM * 0.5);
+  // and where it HAS washed, the brick under it is bright and clean
+  c = mix(c, c * 1.20, washed * soot * 0.35);
+
+  // ---------------- efflorescence + damp ----------------
+  float efflo = smoothstep(0.62, 0.96, owFbm01(owWarp(p * 2.6, P * 2.6, 0.8, 3), P * 2.6, 4, 0.5));
+  efflo *= mix(1.0, 0.35, m) * (1.0 - soot * 0.6) * (0.4 + 0.8 * mortarAge);
+  c = mix(c, owSRGB(vec3(0.68, 0.672, 0.652)), efflo * 0.55);
+  rough += efflo * 0.10;
+
+  // stepped cracks through the joints — brick cracks at the mortar, not across
+  float crack = owCracks(p * 2.2, P * 2.2, 0.85, 0.036, 0.62 - mortarAge * 0.14);
+  crack *= mix(0.35, 1.0, 1.0 - m);
+  h -= crack * 0.10;
+  ao -= crack * 0.45;
+  c = mix(c, c * 0.32, crack * 0.7);
+
+  float cavity = 1.0 - smoothstep(0.52, 0.76, h);
+  c = mix(c, owSRGB(vec3(0.14, 0.13, 0.12)), cavity * 0.34);
+
+  alb = clamp(c, vec3(0.02), vec3(0.85));
+  rough = clamp(rough, 0.35, 0.99);
+  ao = clamp(ao, 0.10, 1.0);
+  h = clamp(h, 0.0, 1.0);
+}
+`,h2=`
+void owSurface(vec2 uv, out vec3 alb, out float h, out float rough, out float metal, out float ao){
+  const vec2 P = vec2(8.0);
+  vec2 p = uv * P + uSeed * 2.4;
+  float units = max(uParam.x, 1.0);
+  float spandrelH = clamp(uParam.y, 0.05, 0.9);
+  float refl = clamp(uParam.z, 0.0, 1.0);
+  float age = clamp(uParam.w, 0.0, 1.0);
+
+  vec2 g = uv * vec2(units, units);
+  vec2 gid = floor(g);
+  vec2 gf = fract(g);
+  vec4 rnd = owHash42(gid + uSeed * 1.6);
+  vec4 rnd2 = owHash42(gid * 2.7 + 9.0 + uSeed);
+
+  // ---- the frame ---------------------------------------------------------
+  // Anodised aluminium mull...[truncated]
