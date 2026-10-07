@@ -1,0 +1,52 @@
+t the eye reads as
+  // "dirty image", so the response is deliberately the opposite of the naive
+  // "more grain where it is dark".
+  if ( uLens.z > 0.0005 ) {
+    float g = owHash12( gl_FragCoord.xy + uLens.w * 137.13 ) - 0.5;
+    float g2 = owHash12( gl_FragCoord.xy * 1.7 - uLens.w * 71.3 ) - 0.5;
+    float noise = ( g * 0.65 + g2 * 0.35 );
+    float l = owLum( disp );
+    float response = uLens.z * ( 0.35 + 0.65 * smoothstep( 0.0, 0.30, l ) );
+    disp += noise * response;
+  }
+
+  // ordered dither before the 8-bit write kills gradient banding in the sky
+  disp += ( owHash12( gl_FragCoord.xy * 0.5 + uLens.w ) - 0.5 ) * 0.0022;
+
+  gl_FragColor = vec4( disp, 1.0 );
+}
+`,ZL=`
+precision highp float;
+${un}
+uniform sampler2D tColor;
+uniform vec2 uTexel;
+varying vec2 vUv;
+
+// Compact FXAA 3.11-style edge filter, used only when TAA is off so the
+// no-temporal path still has clean silhouettes.
+void main() {
+  vec3 rgbNW = texture2D( tColor, vUv + vec2( -1.0, -1.0 ) * uTexel ).rgb;
+  vec3 rgbNE = texture2D( tColor, vUv + vec2(  1.0, -1.0 ) * uTexel ).rgb;
+  vec3 rgbSW = texture2D( tColor, vUv + vec2( -1.0,  1.0 ) * uTexel ).rgb;
+  vec3 rgbSE = texture2D( tColor, vUv + vec2(  1.0,  1.0 ) * uTexel ).rgb;
+  vec4 texColor = texture2D( tColor, vUv );
+  vec3 rgbM = texColor.rgb;
+
+  float lumaNW = owLum( rgbNW );
+  float lumaNE = owLum( rgbNE );
+  float lumaSW = owLum( rgbSW );
+  float lumaSE = owLum( rgbSE );
+  float lumaM  = owLum( rgbM );
+  float lumaMin = min( lumaM, min( min( lumaNW, lumaNE ), min( lumaSW, lumaSE ) ) );
+  float lumaMax = max( lumaM, max( max( lumaNW, lumaNE ), max( lumaSW, lumaSE ) ) );
+
+  if ( lumaMax - lumaMin < max( 0.0312, lumaMax * 0.125 ) ) {
+    gl_FragColor = texColor;
+    return;
+  }
+
+  vec2 dir = vec2(
+    -( ( lumaNW + lumaNE ) - ( lumaSW + lumaSE ) ),
+      ( ( lumaNW + lumaSW ) - ( lumaNE + lumaSE ) ) );
+  float dirReduce = max( ( lumaNW + lumaNE + lumaSW + lumaSE ) * 0.03125, 0.0078125 );
+  float rcpDirMin = 1.0 / ( min( abs( dir.x ), abs( dir....[truncated]

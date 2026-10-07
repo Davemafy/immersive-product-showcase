@@ -1,0 +1,41 @@
+he surface by roughly one
+  // shadow texel, scaled up at grazing angles where the texel projects wide.
+  vec3 p = wPos + wN * ( texelWorld * ( 0.55 + 1.1 * ( 1.0 - NdL ) ) );
+  // owCsmMatrix maps world -> ( x, y in -1..1, z LINEAR 0..1 ), w = 1.
+  // See the note on depthMaterial in csm.js: z is NOT an NDC depth and must
+  // not be remapped, which is what makes this independent of reversed-Z.
+  vec4 sc = owCsmMatrix[ c ] * vec4( p, 1.0 );
+  vec3 proj = vec3( sc.xy * 0.5 + 0.5, sc.z );
+  if ( proj.z >= 1.0 || proj.z <= 0.0 ) return 1.0;
+  vec2 uv = proj.xy;
+  vec2 edge = min( uv, 1.0 - uv );
+  if ( min( edge.x, edge.y ) <= 0.0 ) return 1.0;
+
+  float slope = clamp( sqrt( max( 0.0, 1.0 - NdL * NdL ) ) / max( NdL, 0.12 ), 0.0, 5.0 );
+  float bias = ( texelWorld * ( 0.7 + 1.15 * slope ) ) / range;
+  float recv = proj.z - bias;
+
+  float invTex = owCsmMapSize.y;
+  float extent = texelWorld * owCsmMapSize.x;   // cascade world extent
+  float maxR = owCsmParams.z * invTex;
+  // MINIMUM FILTER RADIUS, in texels. 1.4 was effectively "no filter": at that
+  // size a 20-tap Vogel disc lands most of its taps inside the receiver's own
+  // texel, so the edge is the raw texel grid and it reads as a hard, aliased,
+  // stair-stepped line — which is exactly what a critic panel described. 2.6
+  // texels is the smallest disc that actually spans a texel boundary and turns
+  // the staircase into a gradient, and it is still under half a screen pixel of
+  // penumbra in cascade 0.
+  float filterR = 2.6 * invTex;
+
+  #ifdef OW_PCSS
+    float searchR = min( maxR, 10.0 * invTex );
+    float blocker = 0.0;
+    float count = 0.0;
+    for ( int i = 0; i < OW_BLOCKER_TAPS; i ++ ) {
+      float d = owCsmTap( layer, uv + owVogel( i, OW_BLOCKER_TAPS, rot ) * searchR );
+      if ( d < recv ) { blocker += d; count += 1.0; }
+    }
+    if ( count < 0.5 ) return 1.0;
+    blocker /= count;
+    float gap = max( 0.0, ( recv - blocker ) * range );
+    float penumbra = gap * owCsmParams.y;         // metr...[truncated]

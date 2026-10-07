@@ -1,0 +1,42 @@
+). */
+uniform float uLegacyMarch;
+varying vec2 vUv;
+
+#define OW_SLICES 3
+#define OW_STEPS 8
+
+float owArc( float h, float n, float cosN, float sinN ) {
+  return 0.25 * ( -cos( 2.0 * h - n ) + cosN + 2.0 * h * sinN );
+}
+
+void main() {
+  vec4 nrm = texture2D( tNormal, vUv );
+  if ( nrm.z < 0.5 ) { gl_FragColor = vec4( 1.0, 1e4, 0.0, 1.0 ); return; }
+
+  float depth = texture2D( tDepth, vUv ).r;
+
+  // DISTANCE EARLY-OUT. A 1.35 m AO radius projects to under two pixels past
+  // ~700 m, so the clamp to a 6 px minimum radius makes every tap land on
+  // unrelated geometry and the falloff then throws all of them away — 48
+  // texture fetches to compute 1.0. In a 120 m corridor that never happened; in
+  // a 3 km city half the frame is past this line. Skipping it outright is the
+  // single cheapest win in the pass and is bit-identical to what it computed.
+  //
+  // ...PROVIDED 'uMaxDistance' IS ACTUALLY UPLOADED. It was not. The uniform was
+  // declared here and copied from contact.js, but it was never added to the
+  // 'Pass' uniform map below, so three never set it and GL left it at its
+  // default of ZERO. 'depth > 0.0' is true for every shaded fragment in every
+  // frame, so this line returned visibility 1.0 for the WHOLE SCREEN and the
+  // AO buffer has been identically white ever since — measured directly off
+  // '?rview=ao' (RGB 255,255,255, min == max == 1.0, over every rect sampled in
+  // 'car' and 'detail').
+  //
+  // Everything downstream of AO was therefore dead too, silently, while
+  // 'owFeat.x' reported 1 and the pass cost its full price every frame: the
+  // occlusion on indirect light, the micro-shadow on the direct term, the
+  // sky-band visibility that is this engine's real contact shadow, and the
+  // occlusion-driven warm wrap. That is what a critic panel measured as
+  // "contact shadows do not exist", "the car and the ped cast nothing" and
+  // "nothing in the frame reads as touching anything".
+  //
+  // The distance is now DERIVED (see Gtao....[truncated]

@@ -1,0 +1,63 @@
+() {
+  vec2 best = vec2( 0.0 );
+  float bestLen = 0.0;
+  for ( int y = 0; y < 8; y ++ ) {
+    for ( int x = 0; x < 8; x ++ ) {
+      vec2 o = ( vec2( float( x ), float( y ) ) - 3.5 ) * 2.0 * uTexel;
+      vec2 v = texture2D( tVelocity, vUv + o ).rg;
+      float l = dot( v, v );
+      if ( l > bestLen ) { bestLen = l; best = v; }
+    }
+  }
+  gl_FragColor = vec4( best, 0.0, 1.0 );
+}
+`,CL=`
+precision highp float;
+${un}
+uniform sampler2D tColor;
+uniform sampler2D tVelocity;
+uniform sampler2D tTile;
+uniform sampler2D tDepth;
+uniform sampler2D tNormal;
+uniform vec2 uTexel;
+uniform vec2 uResolution;
+uniform vec4 uParams;   // x shutter, y maxRadiusPx, z frame, w intensity
+varying vec2 vUv;
+
+#define OW_MB_TAPS 12
+
+void main() {
+  vec4 centre = texture2D( tColor, vUv );
+  vec2 tileVel = texture2D( tTile, vUv ).rg;
+  vec2 ownVel = texture2D( tVelocity, vUv ).rg;
+
+  vec2 vel = length( tileVel ) > length( ownVel ) ? tileVel : ownVel;
+  vel *= uParams.x;
+
+  float pixels = length( vel * uResolution );
+  if ( pixels < 1.0 ) { gl_FragColor = centre; return; }
+
+  float maxPx = uParams.y;
+  if ( pixels > maxPx ) vel *= maxPx / pixels;
+
+  float centreDepth = texture2D( tDepth, vUv ).r;
+  float cov = texture2D( tNormal, vUv ).z;
+  if ( cov < 0.5 ) centreDepth = 1e5;
+
+  float jitter = owIGN( gl_FragCoord.xy + uParams.z * 2.717 ) - 0.5;
+
+  vec3 sum = centre.rgb;
+  float wsum = 1.0;
+  for ( int i = 1; i <= OW_MB_TAPS; i ++ ) {
+    float t = ( float( i ) + jitter ) / float( OW_MB_TAPS );
+    vec2 o = vel * ( t - 0.5 );
+    for ( int s = 0; s < 2; s ++ ) {
+      vec2 uv = vUv + ( s == 0 ? o : -o );
+      if ( uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 ) continue;
+      float d = texture2D( tDepth, uv ).r;
+      float c = texture2D( tNormal, uv ).z;
+      if ( c < 0.5 ) d = 1e5;
+      // a sample that is much further away than the centre is background
+      // leaking in — down-weight it
+      float w = 1.0 - smoothstep( 0.0, 1.5, ( d - centreDepth ) / max( 1.0, centreDepth ) );
+  ...[truncated]
