@@ -1,18 +1,8 @@
 {
   "name": "obsidian-atlas-cultural-world",
   "private": true,
-  "version": "3.1.0",
-  "type": "module",
+  "version": "4.0.0",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
-  },
-  "dependencies": {
-    "three": "^0.180.0",
-    "decarlo-boyz": "github:scalabled/decarlo-boyz#5581b896709892f7ddbdd6721e63bb33e7df52fd"
-  },
-  "devDependencies": {
-    "vite": "^7.3.7"
+    "build": "rm -rf dist && mkdir -p dist && cp index.html dist/index.html"
   }
 }
